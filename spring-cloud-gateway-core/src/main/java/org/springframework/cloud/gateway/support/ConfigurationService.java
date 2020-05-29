@@ -16,13 +16,6 @@
 
 package org.springframework.cloud.gateway.support;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
-
 import org.springframework.aop.framework.Advised;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.BeanFactory;
@@ -42,6 +35,13 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.util.Assert;
 import org.springframework.validation.Validator;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
+
 public class ConfigurationService implements ApplicationEventPublisherAware {
 
 	private ApplicationEventPublisher publisher;
@@ -55,16 +55,16 @@ public class ConfigurationService implements ApplicationEventPublisherAware {
 	private Supplier<Validator> validator;
 
 	public ConfigurationService(BeanFactory beanFactory,
-			ObjectProvider<ConversionService> conversionService,
-			ObjectProvider<Validator> validator) {
+	                            ObjectProvider<ConversionService> conversionService,
+	                            ObjectProvider<Validator> validator) {
 		this.beanFactory = beanFactory;
 		this.conversionService = conversionService::getIfAvailable;
 		this.validator = validator::getIfAvailable;
 	}
 
 	public ConfigurationService(BeanFactory beanFactory,
-			Supplier<ConversionService> conversionService,
-			Supplier<Validator> validator) {
+	                            Supplier<ConversionService> conversionService,
+	                            Supplier<Validator> validator) {
 		this.beanFactory = beanFactory;
 		this.conversionService = conversionService;
 		this.validator = validator;
@@ -79,8 +79,7 @@ public class ConfigurationService implements ApplicationEventPublisherAware {
 		this.publisher = publisher;
 	}
 
-	public <T, C extends Configurable<T> & ShortcutConfigurable> ConfigurableBuilder<T, C> with(
-			C configurable) {
+	public <T, C extends Configurable<T> & ShortcutConfigurable> ConfigurableBuilder<T, C> with(C configurable) {
 		return new ConfigurableBuilder<T, C>(this, configurable);
 	}
 
@@ -88,9 +87,10 @@ public class ConfigurationService implements ApplicationEventPublisherAware {
 		return new InstanceBuilder<T>(this, instance);
 	}
 
-	/* for testing */ static <T> T bindOrCreate(Bindable<T> bindable,
-			Map<String, Object> properties, String configurationPropertyName,
-			Validator validator, ConversionService conversionService) {
+	/* for testing */
+	static <T> T bindOrCreate(Bindable<T> bindable,
+	                          Map<String, Object> properties, String configurationPropertyName,
+	                          Validator validator, ConversionService conversionService) {
 		// see ConfigurationPropertiesBinder from spring boot for this definition.
 		BindHandler handler = new IgnoreTopLevelConverterNotFoundBindHandler();
 
@@ -111,8 +111,7 @@ public class ConfigurationService implements ApplicationEventPublisherAware {
 			if (AopUtils.isAopProxy(candidate) && (candidate instanceof Advised)) {
 				return (T) ((Advised) candidate).getTargetSource().getTarget();
 			}
-		}
-		catch (Exception ex) {
+		} catch (Exception ex) {
 			throw new IllegalStateException("Failed to unwrap proxied object", ex);
 		}
 		return (T) candidate;

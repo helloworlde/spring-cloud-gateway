@@ -16,16 +16,8 @@
 
 package org.springframework.cloud.gateway.route;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import reactor.core.publisher.Flux;
-
 import org.springframework.cloud.gateway.config.GatewayProperties;
 import org.springframework.cloud.gateway.event.FilterArgsEvent;
 import org.springframework.cloud.gateway.event.PredicateArgsEvent;
@@ -41,8 +33,12 @@ import org.springframework.cloud.gateway.support.HasRouteId;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Flux;
+
+import java.util.*;
 
 /**
+ * 从路由定义中加载路由
  * {@link RouteLocator} that loads routes from a {@link RouteDefinitionLocator}.
  *
  * @author Spencer Gibb
@@ -67,18 +63,22 @@ public class RouteDefinitionRouteLocator implements RouteLocator {
 	private final GatewayProperties gatewayProperties;
 
 	public RouteDefinitionRouteLocator(RouteDefinitionLocator routeDefinitionLocator,
-			List<RoutePredicateFactory> predicates,
-			List<GatewayFilterFactory> gatewayFilterFactories,
-			GatewayProperties gatewayProperties,
-			ConfigurationService configurationService) {
+	                                   List<RoutePredicateFactory> predicates,
+	                                   List<GatewayFilterFactory> gatewayFilterFactories,
+	                                   GatewayProperties gatewayProperties,
+	                                   ConfigurationService configurationService) {
 		this.routeDefinitionLocator = routeDefinitionLocator;
 		this.configurationService = configurationService;
 		initFactories(predicates);
-		gatewayFilterFactories.forEach(
-				factory -> this.gatewayFilterFactories.put(factory.name(), factory));
+		gatewayFilterFactories.forEach(factory -> this.gatewayFilterFactories.put(factory.name(), factory));
 		this.gatewayProperties = gatewayProperties;
 	}
 
+	/**
+	 * 初始化路由工厂
+	 *
+	 * @param predicates
+	 */
 	private void initFactories(List<RoutePredicateFactory> predicates) {
 		predicates.forEach(factory -> {
 			String key = factory.name();
@@ -94,10 +94,15 @@ public class RouteDefinitionRouteLocator implements RouteLocator {
 		});
 	}
 
+	/**
+	 * 获取路由
+	 *
+	 * @return
+	 */
 	@Override
 	public Flux<Route> getRoutes() {
 		Flux<Route> routes = this.routeDefinitionLocator.getRouteDefinitions()
-				.map(this::convertToRoute);
+		                                                .map(this::convertToRoute);
 
 		if (!gatewayProperties.isFailOnRouteDefinitionError()) {
 			// instead of letting error bubble up, continue
@@ -123,12 +128,12 @@ public class RouteDefinitionRouteLocator implements RouteLocator {
 		List<GatewayFilter> gatewayFilters = getFilters(routeDefinition);
 
 		return Route.async(routeDefinition).asyncPredicate(predicate)
-				.replaceFilters(gatewayFilters).build();
+		            .replaceFilters(gatewayFilters).build();
 	}
 
 	@SuppressWarnings("unchecked")
 	List<GatewayFilter> loadGatewayFilters(String id,
-			List<FilterDefinition> filterDefinitions) {
+	                                       List<FilterDefinition> filterDefinitions) {
 		ArrayList<GatewayFilter> ordered = new ArrayList<>(filterDefinitions.size());
 		for (int i = 0; i < filterDefinitions.size(); i++) {
 			FilterDefinition definition = filterDefinitions.get(i);
@@ -146,12 +151,12 @@ public class RouteDefinitionRouteLocator implements RouteLocator {
 
 			// @formatter:off
 			Object configuration = this.configurationService.with(factory)
-					.name(definition.getName())
-					.properties(definition.getArgs())
-					.eventFunction((bound, properties) -> new FilterArgsEvent(
-							// TODO: why explicit cast needed or java compile fails
-							RouteDefinitionRouteLocator.this, id, (Map<String, Object>) properties))
-					.bind();
+			                                                .name(definition.getName())
+			                                                .properties(definition.getArgs())
+			                                                .eventFunction((bound, properties) -> new FilterArgsEvent(
+					                                                // TODO: why explicit cast needed or java compile fails
+					                                                RouteDefinitionRouteLocator.this, id, (Map<String, Object>) properties))
+			                                                .bind();
 			// @formatter:on
 
 			// some filters require routeId
@@ -164,8 +169,7 @@ public class RouteDefinitionRouteLocator implements RouteLocator {
 			GatewayFilter gatewayFilter = factory.apply(configuration);
 			if (gatewayFilter instanceof Ordered) {
 				ordered.add(gatewayFilter);
-			}
-			else {
+			} else {
 				ordered.add(new OrderedGatewayFilter(gatewayFilter, i + 1));
 			}
 		}
@@ -191,16 +195,12 @@ public class RouteDefinitionRouteLocator implements RouteLocator {
 		return filters;
 	}
 
-	private AsyncPredicate<ServerWebExchange> combinePredicates(
-			RouteDefinition routeDefinition) {
+	private AsyncPredicate<ServerWebExchange> combinePredicates(RouteDefinition routeDefinition) {
 		List<PredicateDefinition> predicates = routeDefinition.getPredicates();
-		AsyncPredicate<ServerWebExchange> predicate = lookup(routeDefinition,
-				predicates.get(0));
+		AsyncPredicate<ServerWebExchange> predicate = lookup(routeDefinition, predicates.get(0));
 
-		for (PredicateDefinition andPredicate : predicates.subList(1,
-				predicates.size())) {
-			AsyncPredicate<ServerWebExchange> found = lookup(routeDefinition,
-					andPredicate);
+		for (PredicateDefinition andPredicate : predicates.subList(1, predicates.size())) {
+			AsyncPredicate<ServerWebExchange> found = lookup(routeDefinition, andPredicate);
 			predicate = predicate.and(found);
 		}
 
@@ -209,26 +209,21 @@ public class RouteDefinitionRouteLocator implements RouteLocator {
 
 	@SuppressWarnings("unchecked")
 	private AsyncPredicate<ServerWebExchange> lookup(RouteDefinition route,
-			PredicateDefinition predicate) {
+	                                                 PredicateDefinition predicate) {
 		RoutePredicateFactory<Object> factory = this.predicates.get(predicate.getName());
 		if (factory == null) {
-			throw new IllegalArgumentException(
-					"Unable to find RoutePredicateFactory with name "
-							+ predicate.getName());
+			throw new IllegalArgumentException("Unable to find RoutePredicateFactory with name " + predicate.getName());
 		}
 		if (logger.isDebugEnabled()) {
-			logger.debug("RouteDefinition " + route.getId() + " applying "
-					+ predicate.getArgs() + " to " + predicate.getName());
+			logger.debug("RouteDefinition " + route.getId() + " applying " + predicate.getArgs() + " to " + predicate.getName());
 		}
 
-		// @formatter:off
 		Object config = this.configurationService.with(factory)
-				.name(predicate.getName())
-				.properties(predicate.getArgs())
-				.eventFunction((bound, properties) -> new PredicateArgsEvent(
-						RouteDefinitionRouteLocator.this, route.getId(), properties))
-				.bind();
-		// @formatter:on
+		                                         .name(predicate.getName())
+		                                         .properties(predicate.getArgs())
+		                                         .eventFunction((bound, properties) -> new PredicateArgsEvent(
+				                                         RouteDefinitionRouteLocator.this, route.getId(), properties))
+		                                         .bind();
 
 		return factory.applyAsync(config);
 	}

@@ -159,14 +159,23 @@ public class GatewayAutoConfiguration {
 		return new ConfigurationService(beanFactory, conversionService, validator);
 	}
 
+	/**
+	 * 路由定义
+	 *
+	 * @param properties
+	 * @param gatewayFilters
+	 * @param predicates
+	 * @param routeDefinitionLocator
+	 * @param configurationService
+	 * @return
+	 */
 	@Bean
 	public RouteLocator routeDefinitionRouteLocator(GatewayProperties properties,
 	                                                List<GatewayFilterFactory> gatewayFilters,
 	                                                List<RoutePredicateFactory> predicates,
 	                                                RouteDefinitionLocator routeDefinitionLocator,
 	                                                ConfigurationService configurationService) {
-		return new RouteDefinitionRouteLocator(routeDefinitionLocator, predicates,
-				gatewayFilters, properties, configurationService);
+		return new RouteDefinitionRouteLocator(routeDefinitionLocator, predicates, gatewayFilters, properties, configurationService);
 	}
 
 	@Bean
@@ -174,21 +183,36 @@ public class GatewayAutoConfiguration {
 	@ConditionalOnMissingBean(name = "cachedCompositeRouteLocator")
 	// TODO: property to disable composite?
 	public RouteLocator cachedCompositeRouteLocator(List<RouteLocator> routeLocators) {
-		return new CachingRouteLocator(
-				new CompositeRouteLocator(Flux.fromIterable(routeLocators)));
+		return new CachingRouteLocator(new CompositeRouteLocator(Flux.fromIterable(routeLocators)));
 	}
 
+	/**
+	 * 事件监听器
+	 *
+	 * @param publisher
+	 * @return
+	 */
 	@Bean
-	public RouteRefreshListener routeRefreshListener(
-			ApplicationEventPublisher publisher) {
+	public RouteRefreshListener routeRefreshListener(ApplicationEventPublisher publisher) {
 		return new RouteRefreshListener(publisher);
 	}
 
+	/**
+	 * 加载过滤器处理类
+	 *
+	 * @param globalFilters
+	 * @return
+	 */
 	@Bean
 	public FilteringWebHandler filteringWebHandler(List<GlobalFilter> globalFilters) {
 		return new FilteringWebHandler(globalFilters);
 	}
 
+	/**
+	 * cors 属性
+	 *
+	 * @return
+	 */
 	@Bean
 	public GlobalCorsProperties globalCorsProperties() {
 		return new GlobalCorsProperties();
@@ -196,10 +220,11 @@ public class GatewayAutoConfiguration {
 
 	@Bean
 	public RoutePredicateHandlerMapping routePredicateHandlerMapping(
-			FilteringWebHandler webHandler, RouteLocator routeLocator,
-			GlobalCorsProperties globalCorsProperties, Environment environment) {
-		return new RoutePredicateHandlerMapping(webHandler, routeLocator,
-				globalCorsProperties, environment);
+			FilteringWebHandler webHandler,
+			RouteLocator routeLocator,
+			GlobalCorsProperties globalCorsProperties,
+			Environment environment) {
+		return new RoutePredicateHandlerMapping(webHandler, routeLocator, globalCorsProperties, environment);
 	}
 
 	@Bean

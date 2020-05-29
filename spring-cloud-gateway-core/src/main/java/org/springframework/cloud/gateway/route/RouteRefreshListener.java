@@ -28,8 +28,9 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.util.Assert;
 
-// see ZuulDiscoveryRefreshListener
-// TODO: make abstract class in commons?
+/**
+ * 监听不同的事件，根据事件类型决定是否要发送路由更新消息
+ */
 public class RouteRefreshListener implements ApplicationListener<ApplicationEvent> {
 
 	private final ApplicationEventPublisher publisher;
@@ -43,27 +44,36 @@ public class RouteRefreshListener implements ApplicationListener<ApplicationEven
 
 	@Override
 	public void onApplicationEvent(ApplicationEvent event) {
+		// 如果是上下文刷新，Scope 刷新或者有新的实例注册，则发送路由更新消息
 		if (event instanceof ContextRefreshedEvent
 				|| event instanceof RefreshScopeRefreshedEvent
 				|| event instanceof InstanceRegisteredEvent) {
 			reset();
-		}
-		else if (event instanceof ParentHeartbeatEvent) {
+		} else if (event instanceof ParentHeartbeatEvent) {
+			// 如果是父类的心跳消息，查看是否变化，如果变化则更新
 			ParentHeartbeatEvent e = (ParentHeartbeatEvent) event;
 			resetIfNeeded(e.getValue());
-		}
-		else if (event instanceof HeartbeatEvent) {
+		} else if (event instanceof HeartbeatEvent) {
+			// 如果是心跳消息，查看是否变化，如果变化则更新
 			HeartbeatEvent e = (HeartbeatEvent) event;
 			resetIfNeeded(e.getValue());
 		}
 	}
 
+	/**
+	 * 如果更新了，则发送消息
+	 *
+	 * @param value
+	 */
 	private void resetIfNeeded(Object value) {
 		if (this.monitor.update(value)) {
 			reset();
 		}
 	}
 
+	/**
+	 * 发送路由更新消息
+	 */
 	private void reset() {
 		this.publisher.publishEvent(new RefreshRoutesEvent(this));
 	}
